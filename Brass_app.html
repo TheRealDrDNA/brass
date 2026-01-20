@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Build Decision Assistant</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 16px;
+      background: #f7f7f7;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      position: relative;
+    }
+
+    .back-button {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: #e0e0e0;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+
+    .question {
+      font-size: 1.15rem;
+      margin-bottom: 12px;
+      line-height: 1.4;
+      margin-top: 10px;
+    }
+
+    .explanation {
+      font-size: 0.9rem;
+      color: #444;
+      background: #eef3f8;
+      padding: 10px;
+      border-radius: 10px;
+      margin-bottom: 16px;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    button {
+      padding: 14px 10px;
+      font-size: 1rem;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+    }
+
+    .yes { background: #4caf50; color: white; }
+    .no { background: #f44336; color: white; }
+    .option { background: #2196f3; color: white; }
+    .reset { background: #607d8b; color: white; margin-top: 16px; width: 100%; }
+
+  </style>
+</head>
+<body>
+  <h1>Can You Build It?</h1>
+  <div class="card">
+    <button id="backBtn" class="back-button" style="display:none;">←</button>
+    <div id="question" class="question"></div>
+    <div id="explanation" class="explanation"></div>
+    <div id="buttons" class="buttons"></div>
+  </div>
+
+<script>
+const nodes = {
+  1: {
+    text: "Do you have enough money to pay for it?",
+    explain: "You must be able to pay the full cost of the building before checking any other conditions.",
+    yes: 2,
+    no: "fail"
+  },
+  2: {
+    text: "Does the city have space for it?",
+    explain: "The city must have an empty building slot available.",
+    yes: 3,
+    no: "fail"
+  },
+  3: {
+    text: "Do you already have a building there and is it the Canal era?",
+    explain: "In the Canal era, you may not build a second building in a city where you already have one.",
+    yes: "fail",
+    no: 4
+  },
+  4: {
+    text: "Do you have a card for that city?",
+    explain: "A city card lets you build directly in that specific city.",
+    yes: 7,
+    no: 5
+  },
+  5: {
+    text: "Do you have the appropriate industry card?",
+    explain: "An industry card allows you to build that industry type in any valid city.",
+    yes: 6,
+    no: "fail"
+  },
+  6: {
+    text: "Is the city in your network?",
+    explain: "IN YOUR NETWORK: You have presence in the city via an existing building, or a rail/boat link directly connected to your network.",
+    yes: 7,
+    no: "fail"
+  },
+  7: {
+    text: "What resource does the building require?",
+    explain: "Some buildings require coal or iron; others require no resource.",
+    options: {
+      coal: 8,
+      iron: "iron",
+      none: "build"
+    }
+  },
+  8: {
+    text: "Is the city connected to a source of coal?",
+    explain: "CONNECTED means there is a continuous path of links from this city to a coal mine or foreign market. This does NOT require the city to be in your personal network.",
+    yes: "coal",
+    no: "fail"
+  }
+};
+
+let current = 1;
+let history = [];
+
+const backBtn = document.getElementById("backBtn");
+backBtn.onclick = () => {
+  if (history.length > 0) {
+    current = history.pop();
+    render(false);
+  }
+};
+
+function render(pushHistory = true) {
+  const q = document.getElementById("question");
+  const e = document.getElementById("explanation");
+  const b = document.getElementById("buttons");
+  b.innerHTML = "";
+
+  backBtn.style.display = history.length > 0 ? "block" : "none";
+
+  if (current === "fail") {
+    q.textContent = "You can't build it.";
+    e.textContent = "One or more required conditions were not met. Review the rules and try again.";
+    addReset();
+    return;
+  }
+
+  if (current === "build") {
+    q.textContent = "Build it.";
+    e.textContent = "All placement and card requirements are satisfied, and no resource is required.";
+    addReset();
+    return;
+  }
+
+  if (current === "iron") {
+    q.textContent = "Pay the iron and build it.";
+    e.textContent = "The city is valid and connected to iron. Consume one iron and place the building.";
+    addReset();
+    return;
+  }
+
+  if (current === "coal") {
+    q.textContent = "Pay the coal and build it.";
+    e.textContent = "The city is connected to a coal source. Consume one coal and place the building.";
+    addReset();
+    return;
+  }
+
+  const node = nodes[current];
+  q.textContent = node.text;
+  e.textContent = node.explain;
+
+  if (node.options) {
+    for (const [label, next] of Object.entries(node.options)) {
+      const btn = document.createElement("button");
+      btn.textContent = label.toUpperCase();
+      btn.className = "option";
+      btn.onclick = () => {
+        history.push(current);
+        current = next;
+        render();
+      };
+      b.appendChild(btn);
+    }
+  } else {
+    const yes = document.createElement("button");
+    yes.textContent = "Yes";
+    yes.className = "yes";
+    yes.onclick = () => {
+      history.push(current);
+      current = node.yes;
+      render();
+    };
+
+    const no = document.createElement("button");
+    no.textContent = "No";
+    no.className = "no";
+    no.onclick = () => {
+      history.push(current);
+      current = node.no;
+      render();
+    };
+
+    b.appendChild(yes);
+    b.appendChild(no);
+  }
+}
+
+function addReset() {
+  const b = document.getElementById("buttons");
+  const reset = document.createElement("button");
+  reset.textContent = "Start Over";
+  reset.className = "reset";
+  reset.onclick = () => {
+    current = 1;
+    history = [];
+    render();
+  };
+  b.appendChild(reset);
+}
+
+render();
+</script>
+</body>
+</html>
