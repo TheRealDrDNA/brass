@@ -2,212 +2,218 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brass Build Assistant</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Volleyball Stats</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: white;
             color: black;
-            margin: 0;
             display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-            /* Optimized for profile view [cite: 2] */
+            justify-content: center;
+            padding-top: 20px;
+            margin: 0;
+            user-select: none;
         }
 
-        #content-area {
+        .container {
+            width: 90%;
+            max-width: 400px;
+            border: 1px solid black;
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .label {
             flex: 1;
+            font-size: 1.1rem;
+            font-weight: 500;
+            padding: 0 10px;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn {
+            width: 40px;
+            height: 40px;
+            background-color: black;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1.5rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 30px;
-            text-align: center;
-            font-size: 1.5rem;
-            font-weight: 500;
-            /* Black text on white background  */
+            cursor: pointer;
+            touch-action: manipulation;
         }
 
-        #button-container {
+        .btn:active {
+            background-color: #444;
+        }
+
+        .count {
+            font-size: 1.5rem;
+            min-width: 30px;
+            text-align: center;
+        }
+
+        .reset-container {
             padding: 20px;
             display: flex;
-            flex-direction: column;
-            gap: 12px;
-            /* Positioned where right thumb can reach  */
-            padding-bottom: 40px; 
+            justify-content: center;
         }
 
-        button {
-            padding: 16px;
+        .reset-btn {
+            padding: 10px 30px;
+            background-color: white;
+            border: 1px solid black;
             font-size: 1.1rem;
-            border: 2px solid black;
-            background: white;
-            color: black;
-            border-radius: 8px;
             cursor: pointer;
-            width: 100%;
-            transition: background 0.1s;
-        }
-
-        button:active {
-            background: #eee;
-        }
-
-        .secondary-btns {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .nav-btn {
-            background: #f0f0f0;
-            font-size: 0.9rem;
-            padding: 10px;
         }
     </style>
 </head>
 <body>
 
-    <div id="content-area">
-        <div id="question-text">Loading...</div>
-    </div>
-
-    <div id="button-container">
-        <div id="choice-buttons"></div>
-        <div class="secondary-btns">
-            <button class="nav-btn" onclick="goBack()">← Back</button>
-            <button class="nav-btn" onclick="resetApp()">Reset ⟳</button>
+<div class="container">
+    <div class="row">
+        <div class="label">Service</div>
+        <div class="controls">
+            <button class="btn" onclick="update('service', -1)">-</button>
+            <span class="count" id="service">0</span>
+            <button class="btn" onclick="update('service', 1)">+</button>
         </div>
     </div>
 
-    <script>
-        // Decision tree data based on 
-        const nodes = {
-            1: {
-                text: "Does the city you want to build in have a space for it?",
-                choices: [
-                    { text: "Yes", next: 2 },
-                    { text: "No", next: "fail_no_space" }
-                ]
-            },
-            2: {
-                text: "Is this the CANAL ERA?",
-                choices: [
-                    { text: "Yes (Canal Era)", next: 2.1 },
-                    { text: "No (Rail Era)", next: 3 }
-                ]
-            },
-            2.1: {
-                text: "Would this be your ONLY building in this city?",
-                choices: [
-                    { text: "Yes", next: 3 },
-                    { text: "No", next: "fail_canal_limit" }
-                ]
-            },
-            3: {
-                text: "Do you have a CITY card for that city?",
-                choices: [
-                    { text: "Yes", next: 6 },
-                    { text: "No", next: 4 }
-                ]
-            },
-            4: {
-                text: "Do you have the appropriate INDUSTRY card?",
-                choices: [
-                    { text: "Yes", next: 5 },
-                    { text: "No", next: "fail_no_card" }
-                ]
-            },
-            5: {
-                text: "Is the city in your NETWORK? (Cities with your buildings or adjacent links)",
-                choices: [
-                    { text: "Yes", next: 6 },
-                    { text: "No", next: "fail_network" }
-                ]
-            },
-            6: {
-                text: "What resource does the building require?",
-                choices: [
-                    { text: "Coal", next: 7 },
-                    { text: "Iron", next: 8 },
-                    { text: "No Resource", next: 10 }
-                ]
-            },
-            7: {
-                text: "Is the city CONNECTED to a source of coal (mine or market)?",
-                choices: [
-                    { text: "Yes", next: 9 },
-                    { text: "No", next: "fail_no_coal" }
-                ]
-            },
-            8: {
-                text: "SUCCESS: Place building & remove iron cubes. Locations don't need to be connected. Buy from market if needed.",
-                choices: []
-            },
-            9: {
-                text: "SUCCESS: Place building & remove coal from nearest connected mine (any player). Buy from market if connected.",
-                choices: []
-            },
-            10: {
-                text: "SUCCESS: You may place the building.",
-                choices: []
-            },
-            // Failure states [cite: 8, 10, 17, 20, 27]
-            "fail_no_space": { text: "You can't build it. No space available.", choices: [] },
-            "fail_canal_limit": { text: "You can't build it. In the CANAL era, each player may only have one building per city.", choices: [] },
-            "fail_no_card": { text: "You can't build it. You must have at least the proper CITY or INDUSTRY card.", choices: [] },
-            "fail_network": { text: "You can't build it. You can only use an INDUSTRY CARD for a city in your NETWORK.", choices: [] },
-            "fail_no_coal": { text: "You can't build it. No connected coal source.", choices: [] }
-        };
+    <div class="row">
+        <div class="label">Successful Serve</div>
+        <div class="controls">
+            <button class="btn" onclick="update('successServe', -1)">-</button>
+            <span class="count" id="successServe">0</span>
+            <button class="btn" onclick="update('successServe', 1)">+</button>
+        </div>
+    </div>
 
-        let history = [];
-        let currentNode = 1;
+    <div class="row">
+        <div class="label">Ace</div>
+        <div class="controls">
+            <button class="btn" onclick="updateAce(-1)">-</button>
+            <span class="count" id="ace">0</span>
+            <button class="btn" onclick="updateAce(1)">+</button>
+        </div>
+    </div>
 
-        function renderNode() {
-            const node = nodes[currentNode];
-            document.getElementById('question-text').innerText = node.text;
-            const container = document.getElementById('choice-buttons');
-            container.innerHTML = '';
+    <div class="row">
+        <div class="label">Flubs</div>
+        <div class="controls">
+            <button class="btn" onclick="update('flubs', -1)">-</button>
+            <span class="count" id="flubs">0</span>
+            <button class="btn" onclick="update('flubs', 1)">+</button>
+        </div>
+    </div>
 
-            node.choices.forEach(choice => {
-                const btn = document.createElement('button');
-                btn.innerText = choice.text;
-                btn.onclick = () => {
-                    triggerHaptic();
-                    history.push(currentNode);
-                    currentNode = choice.next;
-                    renderNode();
-                };
-                container.appendChild(btn);
-            });
+    <div class="row">
+        <div class="label">Error</div>
+        <div class="controls">
+            <button class="btn" onclick="update('error', -1)">-</button>
+            <span class="count" id="error">0</span>
+            <button class="btn" onclick="update('error', 1)">+</button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="label">Successful Touches</div>
+        <div class="controls">
+            <button class="btn" onclick="update('touch', -1)">-</button>
+            <span class="count" id="touch">0</span>
+            <button class="btn" onclick="update('touch', 1)">+</button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="label">Point</div>
+        <div class="controls">
+            <button class="btn" onclick="updatePoint(-1)">-</button>
+            <span class="count" id="point">0</span>
+            <button class="btn" onclick="updatePoint(1)">+</button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="label">Kill</div>
+        <div class="controls">
+            <button class="btn" onclick="updateKill(-1)">-</button>
+            <span class="count" id="kill">0</span>
+            <button class="btn" onclick="updateKill(1)">+</button>
+        </div>
+    </div>
+
+    <div class="reset-container">
+        <button class="reset-btn" onclick="resetStats()">Reset</button>
+    </div>
+</div>
+
+<script>
+    let stats = {
+        service: 0,
+        successServe: 0,
+        ace: 0,
+        flubs: 0,
+        error: 0,
+        touch: 0,
+        point: 0,
+        kill: 0
+    };
+
+    function update(key, val) {
+        stats[key] = Math.max(0, stats[key] + val);
+        render();
+    }
+
+    function updateAce(val) {
+        stats.ace = Math.max(0, stats.ace + val);
+        stats.successServe = Math.max(0, stats.successServe + val);
+        stats.point = Math.max(0, stats.point + val);
+        // Note: Ace does NOT affect touch
+        render();
+    }
+
+    function updatePoint(val) {
+        stats.point = Math.max(0, stats.point + val);
+        stats.touch = Math.max(0, stats.touch + val);
+        render();
+    }
+
+    function updateKill(val) {
+        stats.kill = Math.max(0, stats.kill + val);
+        stats.point = Math.max(0, stats.point + val);
+        stats.touch = Math.max(0, stats.touch + val);
+        render();
+    }
+
+    function render() {
+        for (let key in stats) {
+            document.getElementById(key).innerText = stats[key];
         }
+    }
 
-        function triggerHaptic() {
-            // 
-            if (window.navigator.vibrate) {
-                window.navigator.vibrate(50);
-            }
+    function resetStats() {
+        if (confirm("Are you sure you want to reset all stats?")) {
+            for (let key in stats) stats[key] = 0;
+            render();
         }
+    }
+</script>
 
-        function goBack() {
-            if (history.length > 0) {
-                triggerHaptic();
-                currentNode = history.pop();
-                renderNode();
-            }
-        }
-
-        function resetApp() {
-            triggerHaptic();
-            history = [];
-            currentNode = 1;
-            renderNode();
-        }
-
-        // Initialize
-        renderNode();
-    </script>
 </body>
 </html>
